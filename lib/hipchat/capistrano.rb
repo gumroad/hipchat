@@ -38,6 +38,16 @@ Capistrano::Configuration.instance(:must_exist).load do
         send(deploy_user, "#{human} finished deploying #{deployment_name} to #{env}.", send_options)
     end
 
+    task :notify_rollback_started do
+      hipchat_client[hipchat_room_name].
+        send(deploy_user, "#{human} started rolling back #{deployment_name} on #{env}.", send_options)
+    end
+
+    task :notify_rollback_finished do
+      hipchat_client[hipchat_room_name].
+        send(deploy_user, "#{human} finished rolling back #{deployment_name} on #{env}.", send_options)
+    end
+
     def send_options
       return @send_options if defined?(@send_options)
       @send_options = message_color ? {:color => message_color} : {}
@@ -85,6 +95,10 @@ Capistrano::Configuration.instance(:must_exist).load do
       fetch(:hipchat_env, fetch(:rack_env, fetch(:rails_env, "production")))
     end
   end
+
+  before "gr:rollback", "hipchat:notify_rollback_started"
+  after  "gr:rollback", "hipchat:notify_rollback_finished"
+  before "hipchat:notify_rollback_started",  "hipchat:set_client"
 
   before "hipchat:notify_deploy_started", "hipchat:set_client"
   before "deploy", "hipchat:trigger_notification"
